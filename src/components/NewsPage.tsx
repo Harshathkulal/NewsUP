@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import NewsCard from "./NewsCard";
 import Loader from "./Loader";
 
-interface Props {
+interface NewsArticle {
   title: string;
   description: string;
   urlToImage: string;
@@ -10,38 +10,51 @@ interface Props {
   url: string;
 }
 
+interface ApiResponse {
+  articles: NewsArticle[];
+}
+
 const url = import.meta.env.VITE_URL;
 const API_KEY = import.meta.env.VITE_API_KEY;
 
 const NewsPage = ({ query }: { query: string }) => {
-  const [newsData, setNewsData] = useState<Props[]>([]);
+  const [newsData, setNewsData] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
-  const [cache, setCache] = useState<{ [key: string]: Props[] }>({}); // Cache to store fetched data
+  const cacheRef = useRef<{ [key: string]: NewsArticle[] }>({});
 
   useEffect(() => {
-    if (cache[query]) {
-      setNewsData(cache[query]);
-      setLoading(false);
-    } else {
-      fetch(`${url}${query}&apiKey=${API_KEY}`)
-        .then((response) => response.json())
-        .then((data) => {
-          const filteredData = data.articles.filter(
-            (article: Props) => article.urlToImage
-          );
-          setNewsData(filteredData);
-          setCache((prevCache) => ({
-            ...prevCache,
-            [query]: filteredData, // Cache the fetched data
-          }));
-          setLoading(false);
-        })
-        .catch((error) => console.error("Error fetching news:", error));
-    }
-  }, [query, cache]);
+    const fetchNews = async () => {
+      if (cacheRef.current[query]) {
+        setNewsData(cacheRef.current[query]);
+        setLoading(false);
+        return;
+      }
 
-  console.log("chace", cache);
-  console.log("News", newsData);
+      setLoading(true);
+      try {
+        const response = await fetch(`${url}${query}&apiKey=${API_KEY}`);
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        const data: ApiResponse = await response.json();
+        const filteredData = data.articles.filter(
+          (article) => article.urlToImage
+        );
+        setNewsData(filteredData);
+        cacheRef.current = {
+          ...cacheRef.current,
+          [query]: filteredData,
+        };
+      } catch (error) {
+        console.error("Error fetching news:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNews();
+  }, [query]);
+
   return (
     <div className="mt-20 m-2 grid gap-2 lg:grid-cols-3">
       {loading ? (
