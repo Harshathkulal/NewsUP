@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import NewsCard from "./NewsCard";
+import Loader from "./Loader";
 
 interface Props {
   title: string;
@@ -14,11 +15,13 @@ const API_KEY = import.meta.env.VITE_API_KEY;
 
 const NewsPage = ({ query }: { query: string }) => {
   const [newsData, setNewsData] = useState<Props[]>([]);
+  const [loading, setLoading] = useState(true);
   const [cache, setCache] = useState<{ [key: string]: Props[] }>({}); // Cache to store fetched data
 
   useEffect(() => {
     if (cache[query]) {
       setNewsData(cache[query]);
+      setLoading(false);
     } else {
       fetch(`${url}${query}&apiKey=${API_KEY}`)
         .then((response) => response.json())
@@ -31,27 +34,35 @@ const NewsPage = ({ query }: { query: string }) => {
             ...prevCache,
             [query]: filteredData, // Cache the fetched data
           }));
+          setLoading(false);
         })
         .catch((error) => console.error("Error fetching news:", error));
     }
   }, [query, cache]);
 
-  console.log(cache)
-  console.log(newsData)
+  console.log("chace", cache);
+  console.log("News", newsData);
   return (
     <div className="mt-20 m-2 grid gap-2 lg:grid-cols-3">
-      {newsData.map((newsItem) => (
-        <NewsCard
-          key={newsItem.url}
-          title={newsItem.title}
-          description={newsItem.description}
-          urlToImage={newsItem.urlToImage}
-          url={newsItem.url}
-        />
-      ))}
+      {loading ? (
+        <>
+          {[...Array(6)].map((_, index) => (
+            <Loader key={index} />
+          ))}
+        </>
+      ) : (
+        newsData.map((newsItem) => (
+          <NewsCard
+            key={newsItem.url}
+            title={newsItem.title}
+            description={newsItem.description}
+            urlToImage={newsItem.urlToImage}
+            url={newsItem.url}
+          />
+        ))
+      )}
     </div>
   );
 };
 
 export default NewsPage;
-
